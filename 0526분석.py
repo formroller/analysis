@@ -34,7 +34,7 @@ m_dt = dt()
 m_dt.fit(x_train, y_train)
 
 #4. 모델 평가(test data set 적용)
-m_dt.score(x_test, y_test)    # 97
+m_dt.score(x_test, y_test)    # 97.3
 
 #5. 매개변수 튜닝 
 max_depth            : 설명변수의 재사용 횟수
@@ -46,14 +46,12 @@ max_feature          : 각 노드에서 설명변수 선택 시 고려되는 후
 min_sample_split     : 최소 가지치기 개수 (오분류 건수가 해당 값 이상일 경우 추가 split)
                      => 값이 작을수록 분할이 늘어난다. - 복잡도 증가(오분류값이 min_split보다 클 경우 분기)   
 
-랜덤포레스트
+# 랜덤포레스트
 서로다른 트리 구성하기 위함
 -> 학습된 데이터를 다시 랜덤하게 트리별로 학습시키기 위해 노력한다.(복원 추출허용)
 -> 복원 추출 허용하며 서로다른 데이터셋에 학습
--> 중요한 질문을 앞에 던진다 ->
-랜덤하게 설정된 변수중 (max_feature)
-대표본 데이터일 경우 선택될           
-
+-> 중요한 질문을 앞에 던진다 
+-> 랜덤하게 설정된 변수중 (max_feature)
 
 #6. new data 예측
 new_data = np.array([[5.0,2.9,3.0,1.5]])
@@ -216,19 +214,52 @@ def plot_feature_importances(model, data):
     plt.ylabel("특성")
     plt.ylim(-1, n_features)
     
-plot_feature_importances(rf,df_cancer)
+plot_feature_importances(rf,cancer)
 
 # =============================================================================
 # Gradiant Boosting Tree
 # =============================================================================
  - 여러개의 결정 트리를 묶어 강력한 모델을 만드는 또 다른 앙상블 방법
- - 이전 트리를 학습하는 형태
+ - 이전 트리를 학습하는 형태 (오분류된 데이터 학습하는 모델)
  - learning_rate로 정해진 학습률에 따라 오분류 데이터 포인트에 더 높은 가중치 부여,
    => 다음 생성되는 트리는 오분류 데이터의 올바른 분류에 초점을 두는 형식
  - 복잡도가 낮은 초기 트리 모델로부터 점차 복잡해지는 형태를 갖춤
- - 랜덤포레스트보다 저 적은 수의 트리로 높은 예측력 기대 가능
+ - 랜덤포레스트보다 적은 수의 트리로 높은 예측력 기대 가능
  - 각 트리는 서로 독립적일 수 없으므로 n_jobs 같은 parallel 옵션에 대한 기대가 줄어든다.
+ 초기생성된 모델에 높은 가중치 , 이후 생성된 모델에 낮은 가중치 ->최종 모델의 복잡도 제어
+#* rf보다 빠른 속도(장)  <-> n_jobs 사용 불가(단)
+
+#[중요 매개변수]
+ • learning_rate : 이전 트리의 오차 보정 정도, 값이 클수록 모델의 복잡도가 커짐 
+ • n_estimators  : 트리의 수, 값이 클수록 모델의 복잡도가 커짐
  
+# Gradiant Boosting Tree - cancer data 
+
+#1. 모델 생성
+m_gb = gb()
+m_gb.fit(x_train, y_train)   # n_estimators=100, learning_rate=0.1
+                             # max_depth=3, min_samples_split=2
+                             
+#2. 모델 평가
+m_gb.score(x_test, y_test)   # 94.7
+
+#3. 매개변수 튜닝
+score_train=[]; score_test=[]
+for i in [0.001, 0.01, 0.1, 0.5, 1]:
+    m_gb = gb(learning_rate=i)
+    m_gb.fit(x_train, y_train)
+    score_train.append(m_gb.score(x_train, y_train))
+    score_test.append(m_gb.score(x_test, y_test))
+
+plt.plot([0.001, 0.01, 0.1, 0.5, 1], score_train, label='train_score')
+plt.plot([0.001, 0.01, 0.1, 0.5, 1], score_test, label='test_score', color='red')
+plt.legend()
+
+#4. 특성 중요도 시각화
+m_gb = gb(learning_rate=0.1)
+m_gb.fix(x_train, y_train)
+plot_feature_importances(m_gb, df_cancer)
+
 
 
 # =============================================================================
@@ -251,8 +282,12 @@ from xgboost.sklearn import XGBRegressor as xgb_r
 # =============================================================================
 
 
-
-
+# [분석시 고려해야 할 기법]      : 목적
+#1. 교차검증(cross validation)   : 평가점수 일반화
+#2. 그리드 서치(grid search)     : 매개변수에서 최적의 조합 발견 (a가 변경될 경우 b도 변경될 수 있다.)
+#3. 교호작용(interaction)        : 의미있는 변수의 결합(상호작용) 발견
+#4. 변수 선택(feature selection) 
+#5. 스케일링 (=변수 표준화)
 
 
 
