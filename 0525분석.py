@@ -74,6 +74,10 @@ x_train, x_test, y_train, y_test = train_test_split(x,  # 설명변수 데이터
                                                     y,  # 종속변수 데이터 셋
                                                     train_size=0.75, # train set 비중(기본값-75%)
                                                     random_state=0)  # seed 값 고정
+
+x_train, x_test, y_train, y_test = train_test_split(df_iris['data'],
+                                                    df_iris['target'],
+                                                    random_state=99)
 x_train.shape  # (112, 4) => trunc(150*75)의 row 추출
 x_test.shape   # (39, 4)
 
