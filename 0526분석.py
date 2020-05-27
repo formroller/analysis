@@ -1,296 +1,304 @@
+# =============================================================================
+# # 교호작용 기법(interaction)
+# =============================================================================
+ - 변수간의 결합*
+ - 설명변수끼리의 상호곱 변수 생성, 그 중 의미있는  변수를 추출하기 위함
+ - 적은 설명변수로 많은 설명변수로의 확장 가능 (설명변수 추가 없이)
+ - 초기 변수 연구 단계에서 고려되는 기법
+ => 수업 목표 : "의미있는 교호작용(변수간 결합)을 찾는 것이 목적"
+ 
+아파트 가격 <= 지하주차장 면적 * 평균강수량
+아파트 가격 <= 지하주차장 면적 + ... +
+
 run profile1
+from sklearn.preprocessing import PolynomialFeatures
 
-# 데이터 셋
-from sklearn.datasets import load_iris as iris
-from sklearn.datasets import load_breast_cancer as cancer
+# interaction - iris data
+# 1.데이터 로딩
+df_iris = iris()
 
-# 분석
-from sklearn.model_selection import train_test_split
+# 2.데이터 분리
+train_x,test_x,train_y,test_y = train_test_split(df_iris['data'],
+                                                 df_iris['target'],
+                                                 random_state=0)
 
-from sklearn.neighbors import KNeighborsClassifier as knn
-from sklearn.neighbors import KNeighborsRegressor as knn_R
+# 3. interaction 모델 생성
+m_poly = PolynomialFeatures(degree=2)  # degree=2, 2차원
 
-from sklearn.tree import DecisionTreeClassifier as dt
-from sklearn.tree import DecisionTreeRegressor as dt_r
+# 4. 모델에 데이터 학습 -> 설명변수 변환기준 찾기
+ #fitting : (확장된 모델알려준다)변수명 추출
+m_poly.fit(train_x)
 
-from sklearn.ensemble import RandomForestClassifier as rf
-from sklearn.ensemble import RandomForestRegressor as rf
+# 5. 실 데이터 변환 (교호작용 기준에 맞게 설명변수 변환)
+# transform : 확장된 형식에 맞춰 리폼(실데이터에 대한 변환)
+train_x_poly = m_poly.transform(train_x)
+
+# 6. 변환된 변수 형태 확인
+m_poly.get_feature_names()                           # 실제 변수명X
+m_poly.get_feature_names(설명변수)                   # 설명변수명 출력  
+m_poly.get_feature_names(df_iris['feature_names'])  # 실제 변수명으로 추출
+
+['sepal length', 'sepal width', 'peral length', 'petal width']
+
+            fitting
+y  x1  x2   =>   y x1  x2  x1^2  x2^2  x1x2
+    1   2           1   2    1     4     2 
+    2   3           2   3    4     9     6 
+   
+transform : 확장된 형식에 맟줘 리폼(실데이터에 대한 변환)
+fitting : (확장된 모델알려준다)변수명 추출
 
 
-# =============================================================================
-# # decision Tree - iris data set
-# =============================================================================
+# 7. 확장된 데이터셋으로 knn모델 적용
+m_knn=knn(n_neighbors=3)
+m_knn.fit(train_x, train_y)
+m_knn.score(test_x, test_y)  # 4개 설명 변수 예측값 - 97.37%
 
-#1. 데이터 로딩
-df_iris = iris()  # iris는 load_iris 함수의 alias 처리된 것 
+m_knn2=knn(n_neighbors=3)
+m_knn2.fit(train_x_poly, train_y)
+test_x_poly = m_poly.transform(test_x)
+m_knn2.score(test_x_poly, test_y)  # 확장된 설명변수 예측값 - 97.37%
 
-#2. 데이터 분리
-x_train, x_test, y_train, y_test = train_test_split(df_iris['data'],
-                                                    df_iris['target'],
-                                                    random_state=0)
+# 8. 확장된 설명변수 중 의미있는 교호작용 추출
 
-#3. 모델 생성 및 train data 학습
-m_dt = dt()
-m_dt.fit(x_train, y_train)
+m_rf = rf()
+m_rf.fit(train_x_poly, train_y)
 
-#4. 모델 평가(test data set 적용)
-m_dt.score(x_test, y_test)    # 97.3
-
-#5. 매개변수 튜닝 
-max_depth            : 설명변수의 재사용 횟수
-                     => 값이 클수록 모델이 복잡해질 확률 증가   
-
-max_feature          : 각 노드에서 설명변수 선택 시 고려되는 후보의 개수
-                     => 값이 작을수록 서로 다른 트리 구성될 확률이 높다
-                     
-min_sample_split     : 최소 가지치기 개수 (오분류 건수가 해당 값 이상일 경우 추가 split)
-                     => 값이 작을수록 분할이 늘어난다. - 복잡도 증가(오분류값이 min_split보다 클 경우 분기)   
-
-# 랜덤포레스트
-서로다른 트리 구성하기 위함
--> 학습된 데이터를 다시 랜덤하게 트리별로 학습시키기 위해 노력한다.(복원 추출허용)
--> 복원 추출 허용하며 서로다른 데이터셋에 학습
--> 중요한 질문을 앞에 던진다 
--> 랜덤하게 설정된 변수중 (max_feature)
-
-#6. new data 예측
-new_data = np.array([[5.0,2.9,3.0,1.5]])
-new_data_y = m_dt.predict(new_data)[0]
-df_iris['target_names'][new_data_y]
-
-#7. 모델 기타 정보 (특성 중요도)
-m_dt.feature_importances_  # gini계수 
-
-# =============================================================================
-# # [decision tree - cancer data set]
-# # min_split 계수 변화에 따른 score 점수 확인
-# -> 튜닝 : overfit 잡기 위해 사용
-# =============================================================================
-
-#1. 데이터 로딩
-from sklearn.datasets import load_breast_cancer as cancer
-dt_cancer = cancer()
-
-#2. train, test 분리
-x_train, x_test, y_train, y_test = train_test_split(dt_cancer['data'],  # 설명변수 데이터 셋
-                                                    dt_cancer['target'],  # 종속변수 데이터 셋
-                                                    random_state=0)   # seed값 고정
-#3. 모델 생성 및 train data 학습
-m_dt2=dt()
-m_dt2.fit(x_train,y_train)
-
-#4. 모델 평가 (test data set 적용)
-m_dt2.score(x_test, y_test)    # 89.9
-
-#5. 매개변수 튜닝(score)
-# - min_slpit 작을수록 과대적합 심해질 수 있다 -> 새로운 데이터 예측력 떨어질 수 있다.
-score_train=[]; score_test=[]
-for i in np.arange(2,21):
-    m_dt2 = dt(min_samples_split=i)
-    m_dt2.fit(x_train, y_train)
-    score_train.append(m_dt2.score(x_train,y_train))
-    score_test.append(m_dt2.score(x_test, y_test))
-
-score_train
-score_test
-
-import matplotlib.pyplot as plt
-
-plt.plot(np.arange(2,21), score_train, label='train_scroe')
-plt.plot(np.arange(2,21), score_test, label='test_scroe', color = 'red')
-plt.legend()
-
-#6. 모델 고정
-m_dt2=dt(min_samples_split=12)
-m_dt2.fit(x_train, y_train)
-m_dt2.feature_importances_
-
-s1 = Series(m_dt2.feature_importances_, index = df_cancer.feature_names)
+df_iris_poly_col = m_poly.get_feature_names(df_iris['feature_names'])
+s1 = Series(m_rf.feature_importances_, index = df_iris_poly_col)
 s1.sort_values(ascending=False)
 
 # =============================================================================
-# # [참고 - Decision Tree 시각화 ]
+# #[ 연습 문제 : interaction - cancer data]
 # =============================================================================
-# 1. window graphviz 설치
-#  - https://graphviz.gitlab.io/_pages/Download/Download_windows.html 
-#  - 다운로드 후 C:/Program Files (x86) 위치에 압축해제(추가 설치 필요 없음)
-  
-# 2. PATH 설정
-import os
-os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/graphviz-2.38/release/bin/'
-os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)'
-# 3. anaconda package 설치
-pip install graphviz
-
-# 4. 시각화 작업
-df_cancer['target_names']
-from sklearn.tree import export_graphviz
-
-export_graphviz(m_dt2,                   # 모델명 
-                out_file="tree.dot", 
-                class_names=df_cancer.target_names, # target name 
-                feature_names=dt_cancer.feature_names, 
-                impurity=False, 
-                filled=True)
-
-import graphviz          # pip install 설치 필요
-
-with open("tree.dot", encoding='UTF8') as f:
-    dot_graph = f.read()
-    
-g1 = graphviz.Source(dot_graph)
-g1.render('a2', cleanup=True) 
-
-# =============================================================================
-# # Tree 구조 모델
-# =============================================================================
-  Decision Tree > Random Forest 
-  > Gradiant Boosting Tree(GB) > extreme Gradiant Boosting Tree(XGB)
 
 
-# =============================================================================
-# Random Forest - cancer data set
-# =============================================================================
-#1. 모델 생성 및 학습
+
+#------------------
+#1) 데이터 로딩
+df_cancer = cancer()
+#2) 데이터 분리
+train_x,test_x,train_y,test_y = train_test_split(df_cancer['data'],
+                                                 df_cancer['target'],
+                                                 random_state=0)
+#3) interaction 모델 생성
+m_poly = PolynomialFeatures(degree=2)
+#4) 모델에 데이터 학습
+m_poly.fit(train_x) # 어떤 형태의 설명변수가 들어가도 상관 없다
+#5) 실 데이터 변환(2차항 추가 / 변수 형태 변경)
+train_x_poly = m_poly.transform(train_x)
+test_x_poly = m_poly.transform(test_x)
+#6) 변환된 변수 형태 확인
+m_poly.get_feature_names(df_cancer['feature_names'])
+#7) 확장된 데이터셋으로 knn모델 적용 -> scale에 민감 / 고차원 데이터셋(설명변수 많음)에 불리
+# RF로 다시 해보기**
+#7-1) 원본 데이터 셋 적용
+m_knn = knn(n_neighbors=3)
+m_knn.fit(train_x, train_y)
+m_knn.score(test_x, test_y)   # 기존 변수 예측값 = 92.3%
+#7-2) 확장된 데이터 셋 적용
+m_knn2 = knn(n_neighbors=3)
+m_knn2.fit(train_x_poly, train_y)
+m_knn2.score(test_x_poly, test_y)  # 확장된 설명 변수 예측값  = 93.7% (1.4% 증가)
+#8) 확장된 설명변수 중 의미있는 교호작용 추출(특성 중요도 파악)
 m_rf = rf()
-m_rf.fit(x_train, y_train)   # n_estimators=10, max_feature='auto',
-                             # min_samples_split=2
-* n_estimators       : 트리 갯수
-* max_feature='auto' : 자동 튜닝, 트리의 random을 생성하는 변수(클수록 과대적합 해소)
+m_rf.fit(train_x_poly, train_y)
 
-#2. 모델 평가
-m_rf.score(x_test, y_test)  # 85.7
+df_cancer_poly_col = m_poly.get_feature_names(df_cancer['feature_names'])
+s1 = Series(m_rf.feature_importances_, index = df_cancer_poly_col)
+v1_importance = s1.sort_values(ascending=False)[:30]
 
-#3. 매개변수 튜닝
-# 3-1) 적절한 tree 갯수 선택 (n_estimate)
-score_train=[]; score_test=[]
-for i in np.arange(1,101):
-    m_rf=rf(n_estimators=i)
-    m_rf.fit(x_train, y_train)
-    score_train.append(m_rf.score(x_train, y_train))
-    score_test.append(m_rf.score(x_test, y_test))
-    
-plt.plot(np.arange(1,101), score_train, label='train_score')
-plt.plot(np.arange(1,101), score_test, label='test_score', color='red')
-plt.legend()
+#9) 시각화
+plt.barh(range(30), v_importance, align = 'center')
+plt.yticks(np.arange(30), v_importance.index)
 
-# 3-2) 적절한 split 수 선택 (min_samples_split) : 11
-score_train=[]; score_test=[]
-for i in np.arange(2,21):
-    m_rf=rf(min_samples_split=i)
-    m_rf.fit(x_train, y_train)
-    score_train.append(m_rf.score(x_train, y_train))
-    score_test.append(m_rf.score(x_test, y_test))
-    
-plt.plot(np.arange(2,21), score_train, label='train_score')
-plt.plot(np.arange(2,21), score_test, label='test_score', color='red')
-plt.legend()
+랜덤포레스트(max_features) - 후보군의 갯수 낮아도 문제 발생할 수 있다. 
+=> 해당 데이터에서 max_features 튜닝시 높은 예측력 갖을 수 있다.
 
-# 3-3) 적절한 features 수 선택 (max_feature)!!다시보기!!
-score_train=[]; score_test=[]
-for i in np.arange(1, df_cancer['data'].shape[1] + 1):
-    m_rf=rf(max_features=i)
-    m_rf.fit(x_train, y_train)
-    score_train.append(m_rf.score(x_train, y_train))
-    score_test.append(m_rf.score(x_test, y_test))
-
-
-plt.plot(np.arange(1,31), score_train, label='train_score')
-plt.plot(np.arange(1,31), score_test, label='test_score', color='red')
-plt.legend()
-
-#4. 최종 모델 고정
-m_rf = rf(max_features=11 , min_samples_split=11, n_estimators=10)
-m_rf.fit(x_train, y_train)
-m_rf.score(x_test, y_test)
-
-#5. 특성 중요도 시각화 !! 다시보기 !!
-
-def plot_feature_importances(model, data):
-    n_features = data.data.shape[1]
-    plt.barh(range(n_features), model.feature_importances_, align='center')
-    ply.yticks(np.arange(n_features), data.feature_names)
-    plt.xlabel("특성 중요도")
-    plt.ylabel("특성")
-    plt.ylim(-1, n_features)
-    
-plot_feature_importances(rf,cancer)
 
 # =============================================================================
-# Gradiant Boosting Tree
+# 변수 스케일링
 # =============================================================================
- - 여러개의 결정 트리를 묶어 강력한 모델을 만드는 또 다른 앙상블 방법
- - 이전 트리를 학습하는 형태 (오분류된 데이터 학습하는 모델)
- - learning_rate로 정해진 학습률에 따라 오분류 데이터 포인트에 더 높은 가중치 부여,
-   => 다음 생성되는 트리는 오분류 데이터의 올바른 분류에 초점을 두는 형식
- - 복잡도가 낮은 초기 트리 모델로부터 점차 복잡해지는 형태를 갖춤
- - 랜덤포레스트보다 적은 수의 트리로 높은 예측력 기대 가능
- - 각 트리는 서로 독립적일 수 없으므로 n_jobs 같은 parallel 옵션에 대한 기대가 줄어든다.
- 초기생성된 모델에 높은 가중치 , 이후 생성된 모델에 낮은 가중치 ->최종 모델의 복잡도 제어
-#* rf보다 빠른 속도(장)  <-> n_jobs 사용 불가(단)
+ - 주로 설명변수끼리의 범위를 비슷하게 조절하기 위해 사용
+ - 거리기반 모델, NN모델 등에서 모델 학습 전 수행되어야 한다.
+ - 설명변수의 정확한 변수 중요도를 측정하기 위해 필요.
+ - interaction 고려시 차원이 더 높은 변수가 설명력 높게 나오는 현상을 보완
 
-#[중요 매개변수]
- • learning_rate : 이전 트리의 오차 보정 정도, 값이 클수록 모델의 복잡도가 커짐 
- • n_estimators  : 트리의 수, 값이 클수록 모델의 복잡도가 커짐
+ - 거리와 관계된 모든 모델은 scale 필요 (0~1 or -1~1)
+ - Standard / MinMax scaler
+ 의미있는 교호작용 set 찾기위해 
+ - 표준화
+ => 표준화 없이 interaction시 제곱 할수록 해당 항이 유의하다고 나오는 문제 발생. 
  
-# Gradiant Boosting Tree - cancer data 
+ 
+# 1) MinMax scaler
+ - 각 설명변수마다 최솟값에 0, 최댓값에 1을 부여하도록 재조절하는 방식
+ * 모든 스케일 값은 0 또는 1 사이에 배치
+ * 최댓값에 1 부여 -> 1값 기준으로 다른 값 나누기
+ * 절대 음의 값이 나올 수 없다.
+ fit - min / max 찾음
+from sklearn.preprocessing import MinMaxScaler
+ 
+# 2) Standard scaler
+ - 각 설명변수마다 표준화 시키는 방식
+ - 표준화 : (x - xbar) / s 
+ * xbar : 표본평균 
+ * s : 표본표준편차
+ fit - xbar / s 찾음
+from sklearn.preprocessing import StandaradScaler 
+ 
+ 
 
-#1. 모델 생성
-m_gb = gb()
-m_gb.fit(x_train, y_train)   # n_estimators=100, learning_rate=0.1
-                             # max_depth=3, min_samples_split=2
-                             
-#2. 모델 평가
-m_gb.score(x_test, y_test)   # 94.7
+# minmax scaling - iris data
+# 1. 데이터 로딩 및 분리
+df_iris = iris()
+train_x, test_x, train_y, test_y = train_test_split(df_iris.data,
+                                                    df_iris.target,
+                                                    random_state=0) 
 
-#3. 매개변수 튜닝
-score_train=[]; score_test=[]
-for i in [0.001, 0.01, 0.1, 0.5, 1]:
-    m_gb = gb(learning_rate=i)
-    m_gb.fit(x_train, y_train)
-    score_train.append(m_gb.score(x_train, y_train))
-    score_test.append(m_gb.score(x_test, y_test))
+# 2. scaling model 생성
+m_mms = MinMaxScaler()
+m_mms.fit(train_x)                          # 각 설명변수의 최대/최소 확인만 *check
+train_x_scaled = m_mms.transform(train_x)   # 최대/최소에 맞게 데이터 변환   *transform
+test_x_scaled = m_mms.transform(test_x) #test set 이나 train 기준으로 해석(1)
 
-plt.plot([0.001, 0.01, 0.1, 0.5, 1], score_train, label='train_score')
-plt.plot([0.001, 0.01, 0.1, 0.5, 1], score_test, label='test_score', color='red')
-plt.legend()
-
-#4. 특성 중요도 시각화
-m_gb = gb(learning_rate=0.1)
-m_gb.fix(x_train, y_train)
-plot_feature_importances(m_gb, df_cancer)
-
-
-
-# =============================================================================
-# # 참고 : extreme Gradiant Boosting Tree(XGB) 설치 및 로딩 방법
-# =============================================================================
-# GB : 앞 트리의 학습 결과를 활용해 재보정 후 새로운 트리 생성 (learning mate - 새로운 매개변수)
-# - XGB : 빠른 속도록 트리구조 구성
-# - pip 파이썬 설치 명령어 (파이썬 홈페이지에서 설치)
-# - conda 아나콘다 설치 명령어 (아나콘다에서 설치)
-
-anconda search -t conda xgboost  # 채널 찾는 명령어
-
-conda install py-xgboot  # 아나콘다 채널로 설치 * 파이썬에 등록되지 않은 경우 사용
-pip install xgboost      # os 명령어
-
-# 설치 및 로딩
-pip install xgboost      # 파이썬으로 설치 - 사용
-from xgboost.sklearn import XGBClassifier as xgb
-from xgboost.sklearn import XGBRegressor as xgb_r
-# =============================================================================
-
-
-# [분석시 고려해야 할 기법]      : 목적
-#1. 교차검증(cross validation)   : 평가점수 일반화
-#2. 그리드 서치(grid search)     : 매개변수에서 최적의 조합 발견 (a가 변경될 경우 b도 변경될 수 있다.)
-#3. 교호작용(interaction)        : 의미있는 변수의 결합(상호작용) 발견
-#4. 변수 선택(feature selection) 
-#5. 스케일링 (=변수 표준화)
+# 변환된 각 설명변수의 최대 / 최소 확인
+train_x_scaled.min(axis=0) 
+train_x_scaled.max(axis=0) 
+ => 0 / 1 사이
+ 
+test_x_scaled.min(axis=0) 
+test_x_scaled.max(axis=0) 
+ => 0/1 기준으로 출력되지 않음.
+ => fit(train_x)  > fit(test_x)로 적용해야 test 0과 1로 출력된다
+ 
+# 참고 : train, test data set마다 서로 다른 기준으로 scaling 하는 경우
+m_mms2 = MinMaxScaler()
+m_mms2.fit(test_x)                          # 각 설명변수의 최대/최소 확인만 *check
+test_x_scaled2 = m_mms.transform(test_x)    #test set 이며 test기준으로 해석(2)
 
 
+test_x_scaled2.min(axis=0) 
+test_x_scaled2.max(axis=0) 
+ 
+test_x_scaled = m_mms.transform(test_x) #test set 이나 train 기준으로 해석(1)
+test_x_scaled2 = m_mms.transform(test_x)    #test set 이며 test기준으로 해석(2)
+#=> scale은 (1)로 수행 - 기준이 달라지면 안되기 때문!**
+# 수치만 작을 뿐 포인트간의 거리 유지해야한다(원본의 분포를 유지해야 좋은 scaling)**
+# 왜곡이 없어야 한다.
 
 
+#[ 참고 : scale된 각 데이터의 분포 확인 ] 
+ # 올바른 scaling 작업이라면 원본의 분포와 일치할 것!
+
+fig, axes = plt.subplots(1,3)
+
+.scatter : x, y 2차원 형식 산점도 
+#1) 원본데이터의 산점도
+#- 옳바른 스케일링 (서로 같은 기준)
+axes[0].scatter(train_x[:,0],train_x[:,1],
+                c=mglearn.cm2(0), label='train', s=60)  # train 산점도 [cm2(색상) - 팔렛트  | s= 포인트 크기]
+
+axes[0].scatter(test_x[:,0],test_x[:,1],
+                c=mglearn.cm2(1), label='test', s=60)   # test 산점도  
+
+axes[0].legend()
+axes[0].set_title('raw data')
 
 
+#2) 올바른 스케일링 데이터의 산점도(train, test 서로 같은 기준으로 조절)
+axes[1].scatter(train_x_scaled[:,0],train_x_scaled[:,1],
+                c = mglearn.cm2(0), label='train', s=60) 
+
+axes[1].scatter(test_x_scaled[:,0], test_x_scaled[:,1],
+                c = mglearn.cm2(1), label='train', s=60) 
+ 
+axes[1].legend()
+axes[1].set_title('correct scale')
+
+=> 분포는 완벽하게 동일
+
+#3) 잘못된 스케일링 데이터의 산점도 (train, test가 서로 다른 기준으로 조절)
+axes[2].scatter(train_x_scaled[:,0],train_x_scaled[:,1],
+                c = mglearn.cm2(0), label='train', s=60) 
+
+axes[2].scatter(test_x_scaled2[:,0], test_x_scaled2[:,1],
+                c = mglearn.cm2(1), label='train', s=60) 
+ 
+axes[2].legend()
+axes[2].set_title('incorrect scale')
+
+# 각각 서로다른 기준으로 스케일링시 데이터 왜곡될 수 있다.
+
+# 스케일링 조절된 형태의 의미있는 interaction 추출 및 모델 적용
+
+# 스케일링 전)
+df_cancer=cancer()
+
+train_x,test_x,train_y,test_y = train_test_split(df_cancer.data,
+                                                 df_cancer.target,
+                                                 random_state=0) 
+m_poly = PolynomialFeatures(degree=2)
+m_poly.fit(train_x)
+
+train_x_poly = m_poly.transform(train_x)
+cancer_poly_col = m_poly.get_feature_names(df_cancer.feature_names)
+
+m_rf = rf()
+m_rf.fit(train_x_poly, train_y)
+m_rf.score(test_x_poly,test_y)    # 90.6%
+
+# 스케일링 후) * 스케일링 후 interaction 수행
+df_cancer=cancer()
+
+train_x,test_x,train_y,test_y = train_test_split(df_cancer.data,
+                                                 df_cancer.target,
+                                                 random_state=0) 
+#-- 스케일링
+m_ms = MinMaxScaler()
+m_ms.fit(train_x)
+train_x_sc = m_ms.transform(train_x)
+test_x_sc = m_ms.transform(test_x)
+
+train_x_sc.min(axis=0)
+train_x_sc.max(axis=0)
+
+test_x_sc.min(axis=0)
+test_x_sc.max(axis=0)
+
+# 
+m_poly = PolynomialFeatures(degree=2)
+m_poly.fit(train_x_sc)
+train_x_poly = m_poly.transform(train_x_sc)
+test_x_poly = m_poly.transform(test_x_sc)
+
+cancer_poly_col = m_poly.get_feature_names(df_cancer.feature_names)
+
+
+# feature importance 확인
+m_rf = rf()
+m_rf.fit(train_x_poly,train_y)
+m_rf.score(test_x_poly, test_y)  # 91.1% 
+
+s1 = Series(m_rf.feature_importances_, index = cancer_poly_col)
+v_importance = s1.sort_values(ascending = False)[:30]
+
+plt.barh(range(30), v_importance, align='center')
+plt.yticks(np.arange(30), v_importance.index)
+
+# [연습 : 독버섯 데이터 셋의 분류분석 ]
+• https://archive.ics.uci.edu/ml/datasets/Mushroom 에서 데이터 설명 확인 가능 
+• 첫 번째 열이 독성의 유무로 독성이면 p, 식용이면 e로 표현 
+• 두 번째 열은 버섯의 머리 모양     (벨형태 : b, 원뿔 : c, 볼록한 형태 : x, 평평한 형태 : f, 혹 형태 : k,오목한 형태 : s) 
+• 네 번째 열은 버섯의 머리 색      (갈색 : n, 황갈색 : b, 연한 갈색 c .....) 
+
+mr = pd.read_csv('mushroom.csv')
+
+# SVM : Support Vector Machine(커널 서포트 벡터 머신)
+ - 분류분석 모델
+ - 다차원 데이터셋에 주로 적용
+ - 다차원 데이터셋의 분류 기준을 초평면으로 만들어 분류하는 과정
+ - 초평면을 만드는 과정이 매우 복잡, 해석 불가(black box 모델)
+ - c, gamma의 매개변수 조합이 매우 중요
+ - 학습전 scaling 조절 필요
+ - 이상치에 민감
