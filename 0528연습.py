@@ -100,19 +100,50 @@ m_knn.score(test_x_pca, iris_te_y)  # 89.47%
 # b) RF 적용
 m_rf = rf()
 m_rf.fit(train_x_pca, iris_tr_y)
-m_rf.score(test_x_pca, iris_te_y)  # 85.81
+m_rf.score(test_x_pca, iris_te_y)  # 85.81%
 
 # c)DT 적용
 m_dt = dt()
 m_dt.fit(train_x_pca, iris_tr_y)
-m_dt.score(test_x_pca, iris_te_y)  # 89.47
+m_dt.score(test_x_pca, iris_te_y)  # 89.47%
 
 # d) SVM 적용
 m_svm = SVC()
 m_svm.fit(train_x_pca, iris_tr_y)
-m_svm.score(test_x_pca, iris_te_y)  # 89.47
+m_svm.score(test_x_pca, iris_te_y)  # 89.47%
 
-# scaling + interacion + pca + svm(knn)
+# scaling + interacion + pca   * interaciton 과정 추가
+
+m_poly = PolynomialFeatures(degree=2)
+m_poly.fit(train_x_sc)
+
+train_x_poly = m_poly.transform(train_x_sc)
+test_x_poly = m_poly.transform(test_x_sc)
+
+m_pca = PCA(n_components = 2)
+m_pca.fit(train_x_poly, iris_tr_y)
+
+iris_tr_x_spp = m_pca.transform(train_x_poly)
+iris_te_x_spp = m_pca.transform(test_x_poly)
+
+# -> knn
+m_knn = knn(n_neighbors=3)
+m_knn.fit(iris_tr_x_spp, iris_tr_y)
+m_knn.score(iris_te_x_spp, iris_te_y)  # 89.47 -> 86.84
+# -> RF
+m_rf = rf()
+m_rf.fit(iris_tr_x_spp, iris_tr_y)
+m_rf.score(iris_te_x_spp, iris_te_y)   # 85.81 -> 94.8%
+
+# -> DT
+m_dt = dt()
+m_dt.fit(iris_tr_x_spp, iris_tr_y)
+m_dt.score(iris_te_x_spp, iris_te_y)   # 89.47 -> 86.84%
+
+# -> SVM
+m_svm = SVC()
+m_svm.fit(iris_tr_x_spp, iris_tr_y)
+m_svm.score(iris_te_x_spp, iris_te_y)  # 89.47 -> 89.47%
 
 # =============================================================================
 # (PCA + SVM) cancer data
