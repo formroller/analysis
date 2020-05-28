@@ -97,6 +97,18 @@ m_knn = knn(n_neighbors = 3)
 m_knn.fit(train_x_pca, iris_tr_y)
 m_knn.score(test_x_pca, iris_te_y)  # 89.47%
 
+score_train=[]; score_test=[]
+for i in np.arange(1,11):
+    m_knn = knn(n_neighbors=i)
+    m_knn.fit(train_x_pca, iris_tr_y)
+    score_train.append(m_knn.score(train_x_pca, iris_tr_y))
+    score_test.append(m_knn.score(test_x_pca, iris_te_y))
+
+    
+plt.plot(np.arange(1,11), score_train, label = 'train_score')
+plt.plot(np.arange(1,11), score_test, label = 'test_score')    
+
+plt.legend()
 # b) RF 적용
 m_rf = rf()
 m_rf.fit(train_x_pca, iris_tr_y)
@@ -130,10 +142,10 @@ iris_te_x_spp = m_pca.transform(test_x_poly)
 m_knn = knn(n_neighbors=3)
 m_knn.fit(iris_tr_x_spp, iris_tr_y)
 m_knn.score(iris_te_x_spp, iris_te_y)  # 89.47 -> 86.84
-# -> RF
+# -> RF**
 m_rf = rf()
 m_rf.fit(iris_tr_x_spp, iris_tr_y)
-m_rf.score(iris_te_x_spp, iris_te_y)   # 85.81 -> 94.8%
+m_rf.score(iris_te_x_spp, iris_te_y)   # 85.81 -> 94.8%**
 
 # -> DT
 m_dt = dt()
