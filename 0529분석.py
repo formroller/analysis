@@ -187,8 +187,18 @@ m_rf = rf()
 cross_val_score(m_rf, df_iris.data, df_iris.target, cv=m_kfold)
 v_score = cross_val_score(m_rf, df_iris.data, df_iris.target, cv=m_kfold).mean()  # 94.44% - 평균값(일반화된 점수)
 
+# 교차검증 과정 시각화
+v_mean = []
 
+for i in range(1,4) :
+    m_rf = rf(max_features = i)
+    v_score = cross_val_score(m_rf, df_iris.data, df_iris.target, cv = m_kfold)
+    v_x = np.repeat(i,5)
+    plt.scatter(v_x,v_score)
+    v_mean.append(v_score.mean())
 
+plt.ylim([0.8,1.1])
+plt.plot(range(1,4), v_mean)
 
 # [ 참고 - RGB값 추출 ]
 import imageio
