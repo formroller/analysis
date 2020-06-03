@@ -91,3 +91,35 @@ from sklearn.datasets import fetch_lfw_people
 #CV
 from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import KFold
+
+# Feature Selection
+from sklearn.feature_selection import SelectFromModel
+from sklearn.feature_selection import SelectPercentile
+from sklearn.feature_selection import RFE 
+
+# iris data feature selection - 모델 기반 변수 선택법
+from sklearn.feature_selection import SelectFromModel
+
+# 변수 선택
+from sklearn.feature_selection import SelectPercentile
+
+# 반복선택
+from sklearn.feature_selection import RFE 
+
+# GridSearchCV
+from sklearn.model_selection import GridSearchCV
+
+# 보스턴 주택가격 예측(회귀)
+from sklearn.datasets import load_boston as boston
+
+# 회귀모델
+from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import Ridge
+from sklearn.linear_model import Lasso
+
+
+# =============================================================================
+# # 딥러닝
+# =============================================================================
+import tensorflow as tf
+import keras
