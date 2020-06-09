@@ -189,3 +189,4 @@ m_knn.fit(trainval_x, trainval_y)
 
 7. 모델 평가
 m_knn.score(test_x, test_y)  # 100%
+ 
