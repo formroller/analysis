@@ -167,7 +167,7 @@ m_knn.score(test_x_pca, test_y)  # 22.77%
  # k-fold - iris data
 #1) 데이터 로딩
 df_iris = iris()
-
+ 
 #2) k-fold 수행
 
 #CV
